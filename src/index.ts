@@ -10,7 +10,7 @@ import ADMIN_HTML from './admin.html';
 const json = (data: ApiResponse, status = 200) =>
     new Response(JSON.stringify(data), {
         status,
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+        headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
     });
 
 const error = (msg: string, code = 400) => json({ success: false, error: msg }, code);
@@ -32,6 +32,11 @@ export default {
                     'Access-Control-Allow-Headers': '*'
                 }
             });
+        }
+
+        // 主页重定向到管理后台
+        if (path === '/' || path === '') {
+            return Response.redirect(url.origin + '/admin', 302);
         }
 
         // 管理后台页面
