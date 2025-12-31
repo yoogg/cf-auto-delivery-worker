@@ -34,9 +34,15 @@ export default {
             });
         }
 
-        // 主页重定向到管理后台
+        // 主页显示开源仓库地址
         if (path === '/' || path === '') {
-            return Response.redirect(url.origin + '/admin', 302);
+            return new Response(
+                '<html><head><meta charset="utf-8"><title>Auto Delivery Worker</title></head>' +
+                '<body style="font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;background:#0f172a;color:#e2e8f0">' +
+                '<div style="text-align:center"><h1>📦 Auto Delivery Worker</h1>' +
+                '<p>开源地址: <a href="https://github.com/yoogg/cf-auto-delivery-worker" style="color:#818cf8">GitHub</a></p></div></body></html>',
+                { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+            );
         }
 
         // 管理后台页面
