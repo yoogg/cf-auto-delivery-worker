@@ -2,8 +2,6 @@
 
 基于 Cloudflare Workers + D1 的自动数字码发放系统。
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/yoogg/cf-auto-delivery-worker)
-
 ## 功能
 
 - ✅ 幂等发卡（同用户+产品返回相同码）
@@ -11,8 +9,11 @@
 - ✅ 每用户限额配置
 - ✅ Web 管理后台
 - ✅ 批量上传激活码
+- ✅ 自动创建数据库表
 
 ## 一键部署
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/yoogg/cf-auto-delivery-worker)
 
 点击上方按钮，按提示操作：
 1. 授权 Cloudflare 访问你的 GitHub
@@ -21,6 +22,8 @@
 4. 完成部署
 
 部署后访问 `https://your-worker.workers.dev/admin` 进入管理后台。
+
+> **注意**：数据库表会在首次访问时自动创建，无需手动执行 SQL。
 
 ## 手动部署
 
@@ -39,10 +42,7 @@ wrangler d1 create auto-delivery-db
 # 设置 API 密钥
 wrangler secret put API_SECRET
 
-# 初始化数据库
-wrangler d1 execute auto-delivery-db --remote --file=./schema.sql
-
-# 部署
+# 部署（数据库表会自动创建）
 npm run deploy
 ```
 

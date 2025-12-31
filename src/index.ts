@@ -29,6 +29,41 @@ const error = (msg: string, code = 400) => json({ success: false, error: msg }, 
 // 验证密码
 const auth = (body: any, env: Env) => body?.password === env.API_SECRET;
 
+// 自动初始化数据库
+async function initDatabase(db: D1Database) {
+    await db.batch([
+        db.prepare(`CREATE TABLE IF NOT EXISTS products (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            max_per_user INTEGER DEFAULT 1,
+            status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+            created_at TEXT DEFAULT (datetime('now'))
+        )`),
+        db.prepare(`CREATE TABLE IF NOT EXISTS codes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id TEXT NOT NULL,
+            code TEXT NOT NULL UNIQUE,
+            status TEXT DEFAULT 'available' CHECK (status IN ('available', 'assigned')),
+            assigned_to TEXT,
+            assigned_at TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        )`),
+        db.prepare(`CREATE TABLE IF NOT EXISTS deliveries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id TEXT NOT NULL,
+            user TEXT NOT NULL,
+            code TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(product_id, user, code),
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        )`),
+        db.prepare(`CREATE INDEX IF NOT EXISTS idx_codes_product_status ON codes(product_id, status)`),
+        db.prepare(`CREATE INDEX IF NOT EXISTS idx_deliveries_product_user ON deliveries(product_id, user)`),
+    ]);
+}
+
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
         const url = new URL(request.url);
@@ -40,6 +75,8 @@ export default {
         }
 
         try {
+            // 自动初始化数据库（如果表不存在）
+            await initDatabase(env.DB);
             // 主页
             if (path === '/' || path === '') {
                 return new Response(
