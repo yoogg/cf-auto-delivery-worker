@@ -85,83 +85,87 @@ export default {
             }
 
             // === 管理 API ===
-            if (!auth(body, env)) return error('密码错误', 401);
+            if (path.startsWith('/api/admin/')) {
+                if (!auth(body, env)) return error('密码错误', 401);
 
-            // 产品列表
-            if (path === '/api/admin/products') {
-                const data = await env.DB.prepare('SELECT * FROM products ORDER BY created_at DESC').all();
-                return json({ success: true, data: data.results });
-            }
+                // 产品列表
+                if (path === '/api/admin/products') {
+                    const data = await env.DB.prepare('SELECT * FROM products ORDER BY created_at DESC').all();
+                    return json({ success: true, data: data.results });
+                }
 
-            // 添加产品
-            if (path === '/api/admin/products/add') {
-                const { id, name, description, max_per_user } = body;
-                if (!id || !name) return error('缺少 id 或 name');
+                // 添加产品
+                if (path === '/api/admin/products/add') {
+                    const { id, name, description, max_per_user } = body;
+                    if (!id || !name) return error('缺少 id 或 name');
 
-                try {
-                    await env.DB.prepare('INSERT INTO products (id, name, description, max_per_user) VALUES (?, ?, ?, ?)')
-                        .bind(id, name, description || null, max_per_user || 1).run();
+                    try {
+                        await env.DB.prepare('INSERT INTO products (id, name, description, max_per_user) VALUES (?, ?, ?, ?)')
+                            .bind(id, name, description || null, max_per_user || 1).run();
+                        return json({ success: true });
+                    } catch (e: any) {
+                        if (e.message?.includes('UNIQUE')) return error('产品 ID 已存在');
+                        throw e;
+                    }
+                }
+
+                // 更新产品
+                if (path === '/api/admin/products/update') {
+                    const { id, name, description, max_per_user, status } = body;
+                    if (!id) return error('缺少 id');
+
+                    const sets: string[] = [];
+                    const vals: any[] = [];
+                    if (name !== undefined) { sets.push('name = ?'); vals.push(name); }
+                    if (description !== undefined) { sets.push('description = ?'); vals.push(description); }
+                    if (max_per_user !== undefined) { sets.push('max_per_user = ?'); vals.push(max_per_user); }
+                    if (status !== undefined) { sets.push('status = ?'); vals.push(status); }
+
+                    if (!sets.length) return error('无更新内容');
+                    vals.push(id);
+
+                    await env.DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
                     return json({ success: true });
-                } catch (e: any) {
-                    if (e.message?.includes('UNIQUE')) return error('产品 ID 已存在');
-                    throw e;
                 }
-            }
 
-            // 更新产品
-            if (path === '/api/admin/products/update') {
-                const { id, name, description, max_per_user, status } = body;
-                if (!id) return error('缺少 id');
-
-                const sets: string[] = [];
-                const vals: any[] = [];
-                if (name !== undefined) { sets.push('name = ?'); vals.push(name); }
-                if (description !== undefined) { sets.push('description = ?'); vals.push(description); }
-                if (max_per_user !== undefined) { sets.push('max_per_user = ?'); vals.push(max_per_user); }
-                if (status !== undefined) { sets.push('status = ?'); vals.push(status); }
-
-                if (!sets.length) return error('无更新内容');
-                vals.push(id);
-
-                await env.DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
-                return json({ success: true });
-            }
-
-            // 删除产品
-            if (path === '/api/admin/products/delete') {
-                if (!body.id) return error('缺少 id');
-                await env.DB.prepare('DELETE FROM products WHERE id = ?').bind(body.id).run();
-                return json({ success: true });
-            }
-
-            // 库存查询
-            if (path === '/api/admin/inventory') {
-                if (!body.product_id) return error('缺少 product_id');
-                const result = await getInventoryStatus(env.DB, body.product_id);
-                return json({ success: true, ...result });
-            }
-
-            // 激活码列表
-            if (path === '/api/admin/codes') {
-                if (!body.product_id) return error('缺少 product_id');
-                let sql = 'SELECT * FROM codes WHERE product_id = ?';
-                const params: any[] = [body.product_id];
-
-                if (body.status) {
-                    sql += ' AND status = ?';
-                    params.push(body.status);
+                // 删除产品
+                if (path === '/api/admin/products/delete') {
+                    if (!body.id) return error('缺少 id');
+                    await env.DB.prepare('DELETE FROM products WHERE id = ?').bind(body.id).run();
+                    return json({ success: true });
                 }
-                sql += ' ORDER BY id DESC LIMIT 100';
 
-                const data = await env.DB.prepare(sql).bind(...params).all();
-                return json({ success: true, data: data.results });
-            }
+                // 库存查询
+                if (path === '/api/admin/inventory') {
+                    if (!body.product_id) return error('缺少 product_id');
+                    const result = await getInventoryStatus(env.DB, body.product_id);
+                    return json({ success: true, ...result });
+                }
 
-            // 上传激活码 (管理后台)
-            if (path === '/api/admin/codes/upload') {
-                if (!body.product_id || !body.codes?.length) return error('缺少 product_id 或 codes');
-                const result = await uploadCodes(env.DB, body.product_id, body.codes);
-                return json({ success: true, ...result });
+                // 激活码列表
+                if (path === '/api/admin/codes') {
+                    if (!body.product_id) return error('缺少 product_id');
+                    let sql = 'SELECT * FROM codes WHERE product_id = ?';
+                    const params: any[] = [body.product_id];
+
+                    if (body.status) {
+                        sql += ' AND status = ?';
+                        params.push(body.status);
+                    }
+                    sql += ' ORDER BY id DESC LIMIT 100';
+
+                    const data = await env.DB.prepare(sql).bind(...params).all();
+                    return json({ success: true, data: data.results });
+                }
+
+                // 上传激活码 (管理后台)
+                if (path === '/api/admin/codes/upload') {
+                    if (!body.product_id || !body.codes?.length) return error('缺少 product_id 或 codes');
+                    const result = await uploadCodes(env.DB, body.product_id, body.codes);
+                    return json({ success: true, ...result });
+                }
+
+                return error('未找到', 404);
             }
         }
 
