@@ -304,6 +304,7 @@
                         <th>状态</th>
                         <th>分配给</th>
                         <th>分配时间</th>
+                        <th>操作</th>
                     </tr>
                 </thead>
                 <tbody id="codeList"></tbody>
@@ -434,8 +435,27 @@
           <td><span class="badge ${c.status === 'available' ? 'active' : 'inactive'}">${c.status === 'available' ? '可用' : '已分配'}</span></td>
           <td>${c.assigned_to || '-'}</td>
           <td>${c.assigned_at || '-'}</td>
+          <td class="actions">
+            ${c.status === 'available' ? `<button class="secondary" onclick="assignCode(${c.id})">分配</button>` : ''}
+            <button class="secondary" onclick="deleteCode(${c.id})">删除</button>
+          </td>
         </tr>`;
             }
+        }
+
+        async function deleteCode(id) {
+            if (!confirm('确定删除此激活码？')) return;
+            const res = await request('/codes/delete', { code_id: id });
+            res.success ? (toast('已删除'), loadCodes()) : toast(res.error, true);
+        }
+
+        async function assignCode(id) {
+            const user = prompt('请输入要分配给的用户ID (User ID):');
+            if (user === null) return;
+            if (!user.trim()) return toast('用户ID不能为空', true);
+
+            const res = await request('/codes/assign', { code_id: id, user: user.trim() });
+            res.success ? (toast('分配成功'), loadCodes()) : toast(res.error, true);
         }
 
         // 回车登录

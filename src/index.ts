@@ -208,6 +208,37 @@ export default {
                         return json({ success: true, ...result });
                     }
 
+                    // 删除激活码
+                    if (path === '/api/admin/codes/delete') {
+                        if (!body.code_id) return error('缺少 code_id');
+                        await env.DB.prepare('DELETE FROM codes WHERE id = ?').bind(body.code_id).run();
+                        return json({ success: true });
+                    }
+
+                    // 手动分配激活码 (不受用户限额限制)
+                    if (path === '/api/admin/codes/assign') {
+                        if (!body.code_id || !body.user) return error('缺少 code_id 或 user');
+
+                        // 获取激活码信息
+                        const code = await env.DB.prepare('SELECT id, product_id, code, status FROM codes WHERE id = ?')
+                            .bind(body.code_id).first<{ id: number; product_id: string; code: string; status: string }>();
+
+                        if (!code) return error('激活码不存在', 404);
+                        if (code.status === 'assigned') return error('激活码已被分配');
+
+                        const now = new Date().toISOString();
+
+                        // 分配码并记录发放 (不检查用户限额)
+                        await env.DB.batch([
+                            env.DB.prepare("UPDATE codes SET status = 'assigned', assigned_to = ?, assigned_at = ? WHERE id = ?")
+                                .bind(body.user, now, body.code_id),
+                            env.DB.prepare('INSERT INTO deliveries (product_id, user, code, created_at) VALUES (?, ?, ?, ?)')
+                                .bind(code.product_id, body.user, code.code, now),
+                        ]);
+
+                        return json({ success: true, code: code.code });
+                    }
+
                     return error('未找到', 404);
                 }
             }
