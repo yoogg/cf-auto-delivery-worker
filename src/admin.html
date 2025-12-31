@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>发卡系统管理后台</title>
+  <style>
+    :root { --primary: #6366f1; --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --border: #334155; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 1.5rem; margin-bottom: 24px; background: linear-gradient(90deg, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); }
+    .card h2 { font-size: 1rem; margin-bottom: 16px; color: #94a3b8; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+    input, select, textarea, button { font-size: 14px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100%; }
+    input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+    button { background: var(--primary); border: none; cursor: pointer; font-weight: 600; transition: opacity .2s; }
+    button:hover { opacity: .85; }
+    button.secondary { background: transparent; border: 1px solid var(--border); }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; margin-bottom: 6px; font-size: 13px; color: #94a3b8; }
+    .inline { display: flex; gap: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: #94a3b8; font-weight: 500; }
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+    .badge.active { background: #22c55e20; color: #22c55e; }
+    .badge.inactive { background: #ef444420; color: #ef4444; }
+    .stats { display: flex; gap: 30px; margin-bottom: 20px; }
+    .stat { text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); }
+    .stat-label { font-size: 12px; color: #64748b; }
+    .login-box { max-width: 400px; margin: 100px auto; }
+    .toast { position: fixed; bottom: 20px; right: 20px; padding: 14px 20px; background: #22c55e; border-radius: 8px; animation: slideIn .3s; }
+    .toast.error { background: #ef4444; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } }
+    .hidden { display: none; }
+    .actions { display: flex; gap: 8px; }
+    .actions button { width: auto; padding: 6px 12px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <!-- 登录 -->
+  <div id="login" class="container login-box">
+    <div class="card">
+      <h2>🔐 管理员登录</h2>
+      <div class="form-group">
+        <label>API 密钥</label>
+        <input type="password" id="password" placeholder="请输入 API_SECRET">
+      </div>
+      <button onclick="login()">登录</button>
+    </div>
+  </div>
+
+  <!-- 主界面 -->
+  <div id="app" class="container hidden">
+    <h1>📦 发卡系统管理后台</h1>
+
+    <div class="grid">
+      <!-- 添加产品 -->
+      <div class="card">
+        <h2>➕ 添加产品</h2>
+        <div class="form-group">
+          <label>产品 ID</label>
+          <input id="newProductId" placeholder="如: GAME_KEY_2024">
+        </div>
+        <div class="form-group">
+          <label>产品名称</label>
+          <input id="newProductName" placeholder="如: 游戏激活码">
+        </div>
+        <div class="form-group">
+          <label>描述</label>
+          <input id="newProductDesc" placeholder="可选">
+        </div>
+        <div class="form-group">
+          <label>每用户限额</label>
+          <input type="number" id="newProductMax" value="1" min="1">
+        </div>
+        <button onclick="addProduct()">添加产品</button>
+      </div>
+
+      <!-- 上传激活码 -->
+      <div class="card">
+        <h2>📤 上传激活码</h2>
+        <div class="form-group">
+          <label>选择产品</label>
+          <select id="uploadProduct"></select>
+        </div>
+        <div class="form-group">
+          <label>激活码（每行一个）</label>
+          <textarea id="uploadCodes" rows="6" placeholder="CODE-001&#10;CODE-002&#10;CODE-003"></textarea>
+        </div>
+        <button onclick="uploadCodes()">上传</button>
+      </div>
+    </div>
+
+    <!-- 产品列表 -->
+    <div class="card">
+      <h2>📋 产品列表</h2>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>名称</th><th>限额</th><th>可用/已发</th><th>状态</th><th>操作</th></tr>
+        </thead>
+        <tbody id="productList"></tbody>
+      </table>
+    </div>
+
+    <!-- 激活码列表 -->
+    <div class="card">
+      <h2>🎫 激活码列表</h2>
+      <div class="inline" style="margin-bottom: 14px;">
+        <select id="codeProduct" onchange="loadCodes()"><option value="">选择产品</option></select>
+        <select id="codeStatus" onchange="loadCodes()">
+          <option value="">全部状态</option>
+          <option value="available">可用</option>
+          <option value="assigned">已分配</option>
+        </select>
+      </div>
+      <table>
+        <thead>
+          <tr><th>激活码</th><th>状态</th><th>分配给</th><th>分配时间</th></tr>
+        </thead>
+        <tbody id="codeList"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let API_SECRET = '';
+    const API = '/api/admin';
+
+    async function request(endpoint, data = {}) {
+      const res = await fetch(API + endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, password: API_SECRET })
+      });
+      return res.json();
+    }
+
+    function toast(msg, error = false) {
+      const t = document.createElement('div');
+      t.className = 'toast' + (error ? ' error' : '');
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+
+    async function login() {
+      API_SECRET = document.getElementById('password').value;
+      const res = await request('/products');
+      if (res.success) {
+        document.getElementById('login').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+        loadProducts();
+      } else {
+        toast('密钥错误', true);
+      }
+    }
+
+    async function loadProducts() {
+      const res = await request('/products');
+      if (!res.success) return;
+      
+      const tbody = document.getElementById('productList');
+      const sel1 = document.getElementById('uploadProduct');
+      const sel2 = document.getElementById('codeProduct');
+      
+      tbody.innerHTML = '';
+      sel1.innerHTML = '';
+      sel2.innerHTML = '<option value="">选择产品</option>';
+      
+      for (const p of res.data) {
+        const inv = await request('/inventory', { product_id: p.id });
+        const avail = inv.available || 0, assigned = inv.assigned || 0;
+        
+        tbody.innerHTML += `<tr>
+          <td>${p.id}</td>
+          <td>${p.name}</td>
+          <td>${p.max_per_user}</td>
+          <td>${avail} / ${assigned}</td>
+          <td><span class="badge ${p.status}">${p.status === 'active' ? '启用' : '停用'}</span></td>
+          <td class="actions">
+            <button class="secondary" onclick="toggleProduct('${p.id}', '${p.status}')">${p.status === 'active' ? '停用' : '启用'}</button>
+            <button class="secondary" onclick="deleteProduct('${p.id}')">删除</button>
+          </td>
+        </tr>`;
+        
+        sel1.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+        sel2.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+      }
+    }
+
+    async function addProduct() {
+      const id = document.getElementById('newProductId').value.trim();
+      const name = document.getElementById('newProductName').value.trim();
+      const desc = document.getElementById('newProductDesc').value.trim();
+      const max = parseInt(document.getElementById('newProductMax').value) || 1;
+      
+      if (!id || !name) return toast('请填写产品 ID 和名称', true);
+      
+      const res = await request('/products/add', { id, name, description: desc, max_per_user: max });
+      res.success ? (toast('添加成功'), loadProducts()) : toast(res.error, true);
+    }
+
+    async function toggleProduct(id, status) {
+      const newStatus = status === 'active' ? 'inactive' : 'active';
+      const res = await request('/products/update', { id, status: newStatus });
+      res.success ? loadProducts() : toast(res.error, true);
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm('确定删除此产品及其所有激活码？')) return;
+      const res = await request('/products/delete', { id });
+      res.success ? (toast('已删除'), loadProducts()) : toast(res.error, true);
+    }
+
+    async function uploadCodes() {
+      const productId = document.getElementById('uploadProduct').value;
+      const codes = document.getElementById('uploadCodes').value.split('\n').map(c => c.trim()).filter(Boolean);
+      
+      if (!productId) return toast('请选择产品', true);
+      if (!codes.length) return toast('请输入激活码', true);
+      
+      const res = await request('/codes/upload', { product_id: productId, codes });
+      res.success ? (toast(`成功导入 ${res.inserted} 个，${res.duplicates} 个重复`), loadProducts()) : toast(res.error, true);
+    }
+
+    async function loadCodes() {
+      const productId = document.getElementById('codeProduct').value;
+      const status = document.getElementById('codeStatus').value;
+      if (!productId) return;
+      
+      const res = await request('/codes', { product_id: productId, status });
+      const tbody = document.getElementById('codeList');
+      tbody.innerHTML = '';
+      
+      for (const c of (res.data || [])) {
+        tbody.innerHTML += `<tr>
+          <td style="font-family:monospace">${c.code}</td>
+          <td><span class="badge ${c.status === 'available' ? 'active' : 'inactive'}">${c.status === 'available' ? '可用' : '已分配'}</span></td>
+          <td>${c.assigned_to || '-'}</td>
+          <td>${c.assigned_at || '-'}</td>
+        </tr>`;
+      }
+    }
+
+    // 回车登录
+    document.getElementById('password').addEventListener('keyup', e => e.key === 'Enter' && login());
+  </script>
+</body>
+</html>

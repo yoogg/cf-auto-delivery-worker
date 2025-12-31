@@ -1,0 +1,26 @@
+{
+  "name": "auto-delivery-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Workers automatic digital code delivery system",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute auto-delivery-db --file=./schema.sql",
+    "db:init:local": "wrangler d1 execute auto-delivery-db --local --file=./schema.sql",
+    "db:seed": "wrangler d1 execute auto-delivery-db --file=./seed.sql",
+    "db:seed:local": "wrangler d1 execute auto-delivery-db --local --file=./seed.sql"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "d1",
+    "digital-delivery"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.99.0"
+  }
+}
