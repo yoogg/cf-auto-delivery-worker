@@ -1,0 +1,31 @@
+{
+    "$schema": "https://workers.cloudflare.com/schemas/deploy.json",
+    "name": "auto-delivery-worker",
+    "description": "自动发卡系统 - 基于 Cloudflare Workers + D1 的数字码发放系统",
+    "repository": "https://github.com/yoogg/cf-auto-delivery-worker",
+    "icon": "📦",
+    "main": "src/index.ts",
+    "compatibility_date": "2025-12-31",
+    "resources": {
+        "d1": [
+            {
+                "binding": "DB",
+                "name": "auto-delivery-db"
+            }
+        ]
+    },
+    "env": {
+        "API_SECRET": {
+            "description": "API 访问密钥，用于接口鉴权和管理后台登录",
+            "type": "secret"
+        }
+    },
+    "setup": {
+        "migrations": [
+            {
+                "file": "schema.sql",
+                "type": "d1"
+            }
+        ]
+    }
+}

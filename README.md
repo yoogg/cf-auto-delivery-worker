@@ -2,6 +2,8 @@
 
 基于 Cloudflare Workers + D1 的自动数字码发放系统。
 
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/yoogg/cf-auto-delivery-worker)
+
 ## 功能
 
 - ✅ 幂等发卡（同用户+产品返回相同码）
@@ -10,26 +12,37 @@
 - ✅ Web 管理后台
 - ✅ 批量上传激活码
 
-## 快速开始
+## 一键部署
+
+点击上方按钮，按提示操作：
+1. 授权 Cloudflare 访问你的 GitHub
+2. Fork 此仓库
+3. 设置 `API_SECRET` 密钥
+4. 完成部署
+
+部署后访问 `https://your-worker.workers.dev/admin` 进入管理后台。
+
+## 手动部署
 
 ```bash
-# 1. 安装依赖
+# 克隆仓库
+git clone https://github.com/yoogg/cf-auto-delivery-worker.git
+cd cf-auto-delivery-worker
+
+# 安装依赖
 npm install
 
-# 2. 创建 D1 数据库
+# 创建 D1 数据库
 wrangler d1 create auto-delivery-db
 # 复制 database_id 到 wrangler.toml
 
-# 3. 设置 API 密钥
+# 设置 API 密钥
 wrangler secret put API_SECRET
 
-# 4. 初始化数据库
-wrangler d1 execute auto-delivery-db --local --file=./schema.sql
+# 初始化数据库
+wrangler d1 execute auto-delivery-db --remote --file=./schema.sql
 
-# 5. 本地运行
-npm run dev
-
-# 6. 部署
+# 部署
 npm run deploy
 ```
 
@@ -91,3 +104,7 @@ npm run deploy
 | NO_STOCK | 无可用库存 |
 | PRODUCT_NOT_FOUND | 产品不存在 |
 | 401 | 密码错误 |
+
+## 许可证
+
+MIT
